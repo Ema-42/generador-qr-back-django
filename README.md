@@ -145,7 +145,7 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 
 ## 👨‍💻 Autor
 
-Tu nombre - [tu-email@ejemplo.com](mailto:tu-email@ejemplo.com)
+Emanuel Chusgo Santos - [emanuelchusgp@gmail.com](mailto:emanuelchusgp@gmail.com)
 
 ## 🔗 Enlaces útiles
 
