@@ -66,70 +66,68 @@ Una API REST desarrollada con Django Rest Framework para generar códigos QR de 
    ```bash
    python manage.py runserver
    ```
-
-## 🌐 Endpoints disponibles
-
-### Códigos QR
-
-- `GET /qr/` - Listar todos los códigos QR
-- `POST /qr/` - Crear un nuevo código QR
-- `GET /qr/{id}/` - Obtener un código QR específico
-- `PUT /qr/{id}/` - Actualizar un código QR
-- `DELETE /qr/{id}/` - Eliminar un código QR
+ 
 
 ### Documentación
 
 - `GET /qr/docs/` - Documentación interactiva (Swagger UI)
 - `GET /qr/schema/` - Esquema OpenAPI
 
-## 📖 Uso de la API
+## 🐘 Configurar PostgreSQL (Neon) en un proyecto Django que usaba SQLite
+### 🔧 Requisitos previos
+### Proyecto Django funcionando localmente.
 
-### Crear un código QR
+- **Cuenta creada en Neon** con una base de datos PostgreSQL activa.
+- **Tener la cadena de conexión** (_Neon connection string_).
+- **Tener un entorno virtual activo** (`venv`).
 
+## Instalar dependencias necesarias:
 ```bash
-curl -X POST http://127.0.0.1:8000/qr/ \
-  -H "Content-Type: application/json" \
-  -d '{"data": "https://ejemplo.com", "size": "medium"}'
+pip install psycopg2-binary dj-database-url python-dotenv
 ```
-
-### Obtener todos los códigos QR
-
+## 📁 1. Crear archivo .env en la raíz del proyecto
+Agregar esta línea con tu cadena de conexión real de Neon (puedes obtenerla desde el dashboard):
 ```bash
-curl -X GET http://127.0.0.1:8000/qr/
-```
+DATABASE_URL=postgresql://<usuario>:<contraseña>@<host>.neon.tech/<nombre_db>?sslmode=require
+``` 
+### 🔒 Reemplaza <usuario>, <contraseña>, <host>, y <nombre_db> con los valores de tu cuenta de Neon.
 
-### Obtener un código QR específico
 
+## ⚙️ 2. Modificar settings.py para usar .env y Neon
+Agrega al inicio de settings.py:
 ```bash
-curl -X GET http://127.0.0.1:8000/qr/1/
+import os
+from dotenv import load_dotenv
+load_dotenv()
+```
+```bash
+import dj_database_url
+```
+```bash
+DATABASES = {
+    'default': dj_database_url.parse(
+        os.environ.get("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=True  # Importante para Neon
+    )
+}
+``` 
+## 4. Generar y aplicar migraciones a Neon
+
+Detectar cambios en los modelos
+```bash
+python manage.py makemigrations
+```
+Aplicar migraciones a la base de datos Neon
+```bash
+python manage.py migrate
 ```
 
-## 📚 Documentación interactiva
-
-Una vez que el servidor esté ejecutándose, puedes acceder a la documentación interactiva en:
-
-```
-http://127.0.0.1:8000/qr/docs/
-```
-
-Esta interfaz te permite probar todos los endpoints directamente desde el navegador.
-
-## 🗂️ Estructura del proyecto
-
-```
-generador_qr_api/
-├── qr/                     # Aplicación principal
-│   ├── models.py          # Modelos de datos
-│   ├── views.py           # Vistas/ViewSets
-│   ├── serializers.py     # Serializadores
-│   └── urls.py            # URLs de la app
-├── generador_qr_api/      # Configuración del proyecto
-│   ├── settings.py        # Configuración
-│   └── urls.py            # URLs principales
-├── manage.py              # Comando de Django
-├── requirements.txt       # Dependencias
-└── README.md             # Este archivo
-```
+## 🧪 6. Verificar conexión
+Puedes verificar la conexión directamente ejecutando:
+ ```bash
+python manage.py dbshell
+``` 
 
 ## 🤝 Contribuir
 

@@ -1,0 +1,1 @@
+web: gunicorn generador_qr_api.wsgi
