@@ -7,7 +7,7 @@ router = routers.DefaultRouter()
 router.register(r'', QRCodeView )
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('qr/', include(router.urls)),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]
