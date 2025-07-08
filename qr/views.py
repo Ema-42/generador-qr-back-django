@@ -63,10 +63,6 @@ class QRCodeView(viewsets.ModelViewSet):
         else:
             background_color = hex_to_rgb(background_hex)
 
-        # Limitar valores de tamaño
-        box_size = int(request.data.get("box_size", 10))
-        box_size = max(1, min(box_size, 20))
-
         border = int(request.data.get("border", 4))
         border = max(0, min(border, 10))
 
@@ -86,18 +82,29 @@ class QRCodeView(viewsets.ModelViewSet):
         module_drawer = style_map.get(style, SquareModuleDrawer())
 
         # Color mask
-        gradient_map = {
-            "radial": RadialGradiantColorMask,
-            "square": SquareGradiantColorMask,
-            "horizontal": HorizontalGradiantColorMask,
-            "vertical": VerticalGradiantColorMask,
-        }
-
-        if gradient in gradient_map:
-            color_mask = gradient_map[gradient](
+        if gradient == "radial":
+            color_mask = RadialGradiantColorMask(
                 back_color=background_color or (255, 255, 255),
                 center_color=color,
                 edge_color=gradient_color
+            )
+        elif gradient == "square":
+            color_mask = SquareGradiantColorMask(
+                back_color=background_color or (255, 255, 255),
+                center_color=color,
+                edge_color=gradient_color
+            )
+        elif gradient == "horizontal":
+            color_mask = HorizontalGradiantColorMask(
+                back_color=background_color or (255, 255, 255),
+                left_color=color,
+                right_color=gradient_color
+            )
+        elif gradient == "vertical":
+            color_mask = VerticalGradiantColorMask(
+                back_color=background_color or (255, 255, 255),
+                top_color=color,
+                bottom_color=gradient_color
             )
         else:
             color_mask = SolidFillColorMask(
@@ -107,9 +114,8 @@ class QRCodeView(viewsets.ModelViewSet):
 
         # Crear objeto QR
         qr = qrcode.QRCode(
-            version=None,
+            version=5,
             error_correction=qrcode.constants.ERROR_CORRECT_H,
-            box_size=box_size,
             border=border,
         )
         qr.add_data(content)
@@ -147,7 +153,7 @@ class QRCodeView(viewsets.ModelViewSet):
 
             # Calcular el tamaño deseado para la imagen embebida
             qr_width, qr_height = img.size
-            embed_ratio = float(request.data.get("embed_ratio", 0.15))  # 8% del QR
+            embed_ratio = float(request.data.get("embed_ratio", 0.30))  # 8% del QR
             embed_size = int(min(qr_width, qr_height) * embed_ratio)
 
             # Redimensionar la imagen embebida
@@ -170,14 +176,13 @@ class QRCodeView(viewsets.ModelViewSet):
         return Response({
             "id": qr_instance.id,
             "content": content,
-            "style": style,
-            "color": color,
-            "gradient": gradient,
-            "gradient_color": gradient_color,
-            "background_color": background_hex,
-            "box_size": box_size,
-            "border": border,
-            "has_embedded_image": embedded_image is not None,
+            #"style": style,
+            #"color": color,
+            #"gradient": gradient,
+            #"gradient_color": gradient_color,
+            #"background_color": background_hex,
+            #"border": border,
+            #"has_embedded_image": embedded_image is not None,
             "qr_image_base64": image_base64
         }, status=status.HTTP_201_CREATED)
 
