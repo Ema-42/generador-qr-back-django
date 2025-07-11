@@ -37,6 +37,39 @@ from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers import *
 from qrcode.image.styles.colormasks import *
 
+from django.http import JsonResponse, Http404
+from django.views.decorators.http import require_GET
+from django.utils.timezone import now
+
+@require_GET
+def redirect_qr_view(request, qr_id):
+    try:
+        qr = QRCode.objects.get(id=qr_id)
+    except QRCode.DoesNotExist:
+        raise Http404("QR no encontrado")
+
+    # Incrementa el contador
+    qr.views_count += 1
+    qr.last_viewed_at = now()
+    qr.save(update_fields=['views_count', 'last_viewed_at'])
+
+    # Obtener IP del request
+    ip = get_client_ip(request)
+    print(f"Vista desde IP: {ip}")
+
+    # Devuelve el contenido (la URL) para redirección
+    return JsonResponse({'redirect_to': qr.content})
+
+
+def get_client_ip(request):
+    """Función util para extraer la IP"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
@@ -48,9 +81,11 @@ class QRCodeView(viewsets.ModelViewSet):
     def generar_qr(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        qr_instance = serializer.save()
+        if request.data.get("register_as_official", False):
+            qr_instance = serializer.save()
 
-        content = qr_instance.content
+        content = request.data.get("content")
+        #content = qr_instance.content
         style = request.data.get("style", "square").lower()
         color_hex = request.data.get("color", "#000000")
         gradient = request.data.get("gradient", "").lower()
@@ -174,7 +209,7 @@ class QRCodeView(viewsets.ModelViewSet):
         image_base64 = base64.b64encode(image_png).decode('utf-8')
 
         return Response({
-            "id": qr_instance.id,
+            #"id": qr_instance.id ,
             "content": content,
             #"style": style,
             #"color": color,
@@ -183,7 +218,9 @@ class QRCodeView(viewsets.ModelViewSet):
             #"background_color": background_hex,
             #"border": border,
             #"has_embedded_image": embedded_image is not None,
+            "register_as_official": request.data.get("register_as_official", False),
             "qr_image_base64": image_base64
+
         }, status=status.HTTP_201_CREATED)
 
 
