@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from .models import QRCode
+from .models import QRCode,QRScan
 from .serializer import QrSerializer
 
 from rest_framework.response import Response
@@ -44,20 +44,22 @@ import os
 from django.shortcuts import get_object_or_404
 @require_GET
 def redirect_qr_view(request, qr_id):
-    try:
-        qr = get_object_or_404(QRCode, id=qr_id)
-        #qr = QRCode.objects.get(id=qr_id)
-    except QRCode.DoesNotExist:
-        raise Http404("QR no encontrado")
+    qr = get_object_or_404(QRCode, id=qr_id)
 
-    # Incrementa el contador
-    qr.views_count += 1
-    qr.last_viewed_at = now()
-    qr.save(update_fields=['views_count', 'last_viewed_at'])
-    # Obtener IP del request
-    ip = get_client_ip(request)
-    print(f"Vista desde IP: {ip}")
-    # Devuelve el contenido (la URL) para redirección
+    try:
+        qr.views_count += 1
+        qr.last_viewed_at = now()
+        qr.save(update_fields=['views_count', 'last_viewed_at'])
+        # Solo si el save fue exitoso, registramos el escaneo
+        ip = get_client_ip(request)
+        QRScan.objects.create(
+            qr=qr,
+            ip=ip if ip else None
+        )
+    except Exception as e:
+        print(f"Error actualizando QR: {e}")
+        raise Http404("Error al registrar la vista del QR")
+
     return JsonResponse({'redirect_to': qr.content})
 
 def get_client_ip(request):
