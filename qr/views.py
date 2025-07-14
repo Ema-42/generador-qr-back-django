@@ -40,7 +40,7 @@ from qrcode.image.styles.colormasks import *
 from django.http import JsonResponse, Http404
 from django.views.decorators.http import require_GET
 from django.utils.timezone import now
-
+import os
 @require_GET
 def redirect_qr_view(request, qr_id):
     try:
@@ -52,14 +52,11 @@ def redirect_qr_view(request, qr_id):
     qr.views_count += 1
     qr.last_viewed_at = now()
     qr.save(update_fields=['views_count', 'last_viewed_at'])
-
     # Obtener IP del request
     ip = get_client_ip(request)
     print(f"Vista desde IP: {ip}")
-
     # Devuelve el contenido (la URL) para redirección
     return JsonResponse({'redirect_to': qr.content})
-
 
 def get_client_ip(request):
     """Función util para extraer la IP"""
@@ -73,6 +70,8 @@ def get_client_ip(request):
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+
+frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost')
 class QRCodeView(viewsets.ModelViewSet):
     queryset = QRCode.objects.all()
     serializer_class = QrSerializer
@@ -81,8 +80,7 @@ class QRCodeView(viewsets.ModelViewSet):
     def generar_qr(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        if request.data.get("register_as_official", False):
-            qr_instance = serializer.save()
+        content_seguimiento = None
 
         content = request.data.get("content")
         #content = qr_instance.content
@@ -90,6 +88,12 @@ class QRCodeView(viewsets.ModelViewSet):
         color_hex = request.data.get("color", "#000000")
         gradient = request.data.get("gradient", "").lower()
         gradient_color_hex = request.data.get("gradient_color", "#000000")
+
+        if request.data.get("register_as_official", False):
+            qr_instance = serializer.save()
+            content_seguimiento = f"{frontend_url}/{qr_instance.id}"
+        else:
+            content_seguimiento = content  # o lo que quieras usar como valor alternativo
 
         # Color de fondo (opcional)
         background_hex = request.data.get("background_color", "#ffffff")
@@ -153,7 +157,7 @@ class QRCodeView(viewsets.ModelViewSet):
             error_correction=qrcode.constants.ERROR_CORRECT_H,
             border=border,
         )
-        qr.add_data(content)
+        qr.add_data(content_seguimiento)
         qr.make(fit=True)
 
         # Imagen embebida (opcional)
