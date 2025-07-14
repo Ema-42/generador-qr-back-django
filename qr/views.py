@@ -1,7 +1,6 @@
 from rest_framework import viewsets, status
 from .models import QRCode,QRScan
 from .serializer import QrSerializer
-
 from rest_framework.response import Response
 from rest_framework.decorators import action
 import qrcode
@@ -9,10 +8,8 @@ from io import BytesIO
 from django.http import HttpResponse
 import base64
 from rest_framework.permissions import AllowAny
-
 from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers import *
-
 from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers import (
     RoundedModuleDrawer,
@@ -22,7 +19,6 @@ from qrcode.image.styles.moduledrawers import (
     VerticalBarsDrawer,
     HorizontalBarsDrawer
 )
-
 from qrcode.image.styles.colormasks import (
     SolidFillColorMask,
     RadialGradiantColorMask,
@@ -30,7 +26,6 @@ from qrcode.image.styles.colormasks import (
     HorizontalGradiantColorMask,
     VerticalGradiantColorMask
 )
-
 from PIL import Image
 import base64
 from qrcode.image.styledpil import StyledPilImage
@@ -76,10 +71,30 @@ def hex_to_rgb(hex_color):
     return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
 
 frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost')
+
+
 class QRCodeView(viewsets.ModelViewSet):
     queryset = QRCode.objects.all()
     serializer_class = QrSerializer
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_eliminated = True
+        instance.save(update_fields=["is_eliminated"])
+        return Response({"message": "QR eliminado correctamente."}, status=status.HTTP_204_NO_CONTENT)
+
+    def get_queryset(self):
+        return QRCode.objects.filter(is_eliminated=False)
+
+    @action(detail=True, methods=['get'], url_path='image', permission_classes=[AllowAny])
+    def get_qr_image_base64(self, request, pk=None):
+        from django.shortcuts import get_object_or_404
+        qr = get_object_or_404(QRCode, id=pk)
+
+        if qr.qr_base64:
+            return Response({"qr_image_base64": qr.qr_base64}, status=status.HTTP_200_OK)
+        else:
+            return Response({"detail": "Este QR no tiene una imagen almacenada."}, status=status.HTTP_404_NOT_FOUND)
     @action(detail=False, methods=['post'], url_path='generar', permission_classes=[AllowAny])
     def generar_qr(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -213,17 +228,13 @@ class QRCodeView(viewsets.ModelViewSet):
         buffer.close()
 
         image_base64 = base64.b64encode(image_png).decode('utf-8')
+        #guarrdar image_base64  en el campo qr_base64 del modelo
+        if request.data.get("register_as_official", False):
+            qr_instance.qr_base64 = image_base64
+            qr_instance.save(update_fields=['qr_base64'])
 
         return Response({
-            #"id": qr_instance.id ,
             "content": content,
-            #"style": style,
-            #"color": color,
-            #"gradient": gradient,
-            #"gradient_color": gradient_color,
-            #"background_color": background_hex,
-            #"border": border,
-            #"has_embedded_image": embedded_image is not None,
             "register_as_official": request.data.get("register_as_official", False),
             "qr_image_base64": image_base64
 

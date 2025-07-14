@@ -16,7 +16,8 @@ class QRCode(models.Model):
     )
     views_count = models.PositiveIntegerField(default=0)
     last_viewed_at = models.DateTimeField(null=True, blank=True)
-    is_eliminated = models.BooleanField(null=False, default=True)
+    qr_base64 = models.TextField(blank=True, null=True)
+    is_eliminated = models.BooleanField(null=False, default=False)
 
     def __str__(self):
         return self.nombre_qr or self.content[:30]
