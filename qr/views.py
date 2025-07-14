@@ -41,10 +41,12 @@ from django.http import JsonResponse, Http404
 from django.views.decorators.http import require_GET
 from django.utils.timezone import now
 import os
+from django.shortcuts import get_object_or_404
 @require_GET
 def redirect_qr_view(request, qr_id):
     try:
-        qr = QRCode.objects.get(id=qr_id)
+        qr = get_object_or_404(QRCode, id=qr_id)
+        #qr = QRCode.objects.get(id=qr_id)
     except QRCode.DoesNotExist:
         raise Http404("QR no encontrado")
 
@@ -93,7 +95,7 @@ class QRCodeView(viewsets.ModelViewSet):
             qr_instance = serializer.save()
             content_seguimiento = f"{frontend_url}/{qr_instance.id}"
         else:
-            content_seguimiento = content  # o lo que quieras usar como valor alternativo
+            content_seguimiento = content
 
         # Color de fondo (opcional)
         background_hex = request.data.get("background_color", "#ffffff")
@@ -105,11 +107,9 @@ class QRCodeView(viewsets.ModelViewSet):
         border = int(request.data.get("border", 4))
         border = max(0, min(border, 10))
 
-        # Convertir colores a RGB
         color = hex_to_rgb(color_hex)
         gradient_color = hex_to_rgb(gradient_color_hex)
 
-        # Módulo de dibujo
         style_map = {
             "square": SquareModuleDrawer(),
             "circle": CircleModuleDrawer(),

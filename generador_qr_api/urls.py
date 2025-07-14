@@ -25,5 +25,5 @@ urlpatterns = [
     path('api/', include('qr.urls')),
 
     # Ruta para redirección por ID
-    path('<int:qr_id>/', redirect_qr_view, name='redirect_qr'),
+    path('<uuid:qr_id>/', redirect_qr_view, name='redirect_qr'),
 ]
