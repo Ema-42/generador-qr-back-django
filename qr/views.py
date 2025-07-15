@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from .models import QRCode,QRScan
-from .serializer import QrSerializer
+from .serializer import QrSerializer, QRScanSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import action
 import qrcode
@@ -47,6 +47,12 @@ def redirect_qr_view(request, qr_id):
         qr.save(update_fields=['views_count', 'last_viewed_at'])
         # Solo si el save fue exitoso, registramos el escaneo
         ip = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', 'Desconocido')
+        print(f"User-Agent: {user_agent}")
+        print(f"Headers disponibles:")
+        for key, value in request.META.items():
+            if key.startswith('HTTP_') or key in ['REMOTE_ADDR', 'REMOTE_HOST']:
+                print(f"{key}: {value}")
         QRScan.objects.create(
             qr=qr,
             ip=ip if ip else None
@@ -85,6 +91,17 @@ class QRCodeView(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return QRCode.objects.filter(is_eliminated=False)
+
+    @action(detail=True, methods=['get'], url_path='views', url_name='qr-views')
+    def get_views(self, request, pk=None):
+        try:
+            qr_instance = QRCode.objects.get(pk=pk)
+        except QRCode.DoesNotExist:
+            return Response({'detail': 'QR no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        scans = QRScan.objects.filter(qr=qr_instance).order_by('-time')
+        serializer = QRScanSerializer(scans, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get'], url_path='image', permission_classes=[AllowAny])
     def get_qr_image_base64(self, request, pk=None):
@@ -239,5 +256,3 @@ class QRCodeView(viewsets.ModelViewSet):
             "qr_image_base64": image_base64
 
         }, status=status.HTTP_201_CREATED)
-
-

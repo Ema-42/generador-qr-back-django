@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import QRCode
+from .models import QRCode,QRScan
 
 class QrSerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,3 +14,8 @@ class QrSerializer(serializers.ModelSerializer):
         instance.content = validated_data.get('content', instance.content)
         instance.save()
         return instance
+
+class QRScanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QRScan
+        fields = ['id', 'qr', 'ip', 'time']
