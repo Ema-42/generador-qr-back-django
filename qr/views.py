@@ -45,14 +45,7 @@ def redirect_qr_view(request, qr_id):
         qr.views_count += 1
         qr.last_viewed_at = now()
         qr.save(update_fields=['views_count', 'last_viewed_at'])
-        # Solo si el save fue exitoso, registramos el escaneo
         ip = get_client_ip(request)
-        user_agent = request.META.get('HTTP_USER_AGENT', 'Desconocido')
-        print(f"User-Agent: {user_agent}")
-        print(f"Headers disponibles:")
-        for key, value in request.META.items():
-            if key.startswith('HTTP_') or key in ['REMOTE_ADDR', 'REMOTE_HOST']:
-                print(f"{key}: {value}")
         QRScan.objects.create(
             qr=qr,
             ip=ip if ip else None
