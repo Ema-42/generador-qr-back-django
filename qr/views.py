@@ -177,19 +177,18 @@ class QRCodeView(viewsets.ModelViewSet):
                 front_color=color,
                 back_color=background_color
             )
-
+        # Imagen embebida (opcional)
+        embedded_image_base64 = request.data.get("embedded_image", None)
+        embedded_image = None
+        qr_version = 5 if embedded_image_base64 else None
         # Crear objeto QR
         qr = qrcode.QRCode(
-            version=5,
+            version=qr_version,
             error_correction=qrcode.constants.ERROR_CORRECT_H,
             border=border,
         )
         qr.add_data(content_seguimiento)
         qr.make(fit=True)
-
-        # Imagen embebida (opcional)
-        embedded_image_base64 = request.data.get("embedded_image", None)
-        embedded_image = None
 
         if embedded_image_base64:
             try:
