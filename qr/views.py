@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 import qrcode
 from io import BytesIO
 from django.http import HttpResponse
+from django.db.models import Q
 import base64
 from rest_framework.permissions import AllowAny
 from qrcode.image.styledpil import StyledPilImage
@@ -76,6 +77,74 @@ class QRCodeView(viewsets.ModelViewSet):
     queryset = QRCode.objects.all()
     serializer_class = QrSerializer
 
+    def list(self, request, *args, **kwargs):
+        # Obtener queryset base (solo no eliminados)
+        queryset = self.get_queryset()
+
+        # Obtener parámetro de búsqueda
+        search_term = request.query_params.get('search', '').strip()
+        
+        # Aplicar búsqueda global si existe el término
+        if search_term:
+            queryset = queryset.filter(
+                Q(nombre_qr__icontains=search_term) |
+                Q(content__icontains=search_term) 
+            )
+
+        # Obtener parámetro de ordenamiento
+        sort_order = request.query_params.get('sort', 'desc').lower()
+        
+        # Aplicar ordenamiento por fecha de creación
+        if sort_order == 'asc':
+            queryset = queryset.order_by('created_at')
+        else:
+            queryset = queryset.order_by('-created_at')
+
+        # Leer page y limit con defaults
+        try:
+            page = int(request.query_params.get('page', '1'))
+        except ValueError:
+            page = 1
+        try:
+            limit = int(request.query_params.get('limit', '10'))
+        except ValueError:
+            limit = 10
+
+        # Normalizar valores mínimos
+        page = max(page, 1)
+        limit = max(limit, 1)
+        limit = min(limit, 100)  # Máximo 100 registros por página
+
+        # Contar total de registros (después de aplicar filtros)
+        total_records = queryset.count()
+        total_pages = ((total_records + limit - 1) // limit) if total_records > 0 else 1
+
+        # Ajustar página si está fuera de rango
+        if page > total_pages and total_pages > 0:
+            page = total_pages
+
+        # Calcular índices para paginación
+        start = (page - 1) * limit
+        end = start + limit
+        items = queryset[start:end]
+
+        # Serializar datos
+        serializer = self.get_serializer(items, many=True)
+
+        return Response({
+            "data": serializer.data,
+            "pagination": {
+                "total_records": total_records,
+                "current_page": page,
+                "total_pages": total_pages,
+                "limit": limit
+            }
+        }, status=status.HTTP_200_OK)
+
+    def get_queryset(self):
+        return QRCode.objects.filter(is_eliminated=False)
+
+    
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         instance.is_eliminated = True
@@ -88,7 +157,7 @@ class QRCodeView(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='views', url_name='qr-views')
     def get_views(self, request, pk=None):
         try:
-            qr_instance = QRCode.objects.get(pk=pk)
+            qr_instance = QRCode.objects.get(pk=pk) 
         except QRCode.DoesNotExist:
             return Response({'detail': 'QR no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -134,6 +203,26 @@ class QRCodeView(viewsets.ModelViewSet):
         border = int(request.data.get("border", 4))
         border = max(0, min(border, 10))
 
+        # Obtener valor de version desde el request
+        version = request.data.get("version", None)
+
+        # Normalizar version
+        if version is None:
+            parsed_version = None
+        else:
+            try:
+                parsed_version = int(version)
+                # Si es 0 o menor → tratar como None
+                if parsed_version <= 0:
+                    parsed_version = None
+                else:
+                    # Limitar entre 1 y 40
+                    parsed_version = min(parsed_version, 40)
+            except ValueError:
+                parsed_version = None
+
+
+
         color = hex_to_rgb(color_hex)
         gradient_color = hex_to_rgb(gradient_color_hex)
 
@@ -177,11 +266,18 @@ class QRCodeView(viewsets.ModelViewSet):
                 front_color=color,
                 back_color=background_color
             )
-        # Imagen embebida (opcional)
+       
         embedded_image_base64 = request.data.get("embedded_image", None)
         embedded_image = None
-        qr_version = 5 if embedded_image_base64 else None
-        # Crear objeto QR
+        # Aplicar reglas según si hay imagen incrustada
+        if embedded_image_base64:
+            if parsed_version is None or parsed_version < 5:
+                qr_version = 5
+            else:
+                qr_version = parsed_version
+        else:
+            qr_version = parsed_version
+
         qr = qrcode.QRCode(
             version=qr_version,
             error_correction=qrcode.constants.ERROR_CORRECT_H,
