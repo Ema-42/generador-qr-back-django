@@ -38,6 +38,12 @@ from django.views.decorators.http import require_GET
 from django.utils.timezone import now
 import os
 from django.shortcuts import get_object_or_404
+
+from qrcode.image.svg import SvgImage
+from qrcode.image.svg import SvgFragmentImage
+from qrcode.image.svg import SvgPathImage
+
+
 @require_GET
 def redirect_qr_view(request, qr_id):
     qr = get_object_or_404(QRCode, id=qr_id)
@@ -179,7 +185,6 @@ class QRCodeView(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         content_seguimiento = None
-
         content = request.data.get("content")
         #content = qr_instance.content
         style = request.data.get("style", "square").lower()
@@ -205,7 +210,10 @@ class QRCodeView(viewsets.ModelViewSet):
 
         # Obtener valor de version desde el request
         version = request.data.get("version", None)
+        resolucion = int(request.data.get("resolucion", 10))
 
+        if resolucion < 1 or resolucion > 100:
+            resolucion = 10 
         # Normalizar version
         if version is None:
             parsed_version = None
@@ -221,8 +229,6 @@ class QRCodeView(viewsets.ModelViewSet):
             except ValueError:
                 parsed_version = None
 
-
-
         color = hex_to_rgb(color_hex)
         gradient_color = hex_to_rgb(gradient_color_hex)
 
@@ -235,7 +241,6 @@ class QRCodeView(viewsets.ModelViewSet):
             "horizontal": HorizontalBarsDrawer(),
         }
         module_drawer = style_map.get(style, SquareModuleDrawer())
-
         # Color mask
         if gradient == "radial":
             color_mask = RadialGradiantColorMask(
@@ -280,8 +285,9 @@ class QRCodeView(viewsets.ModelViewSet):
 
         qr = qrcode.QRCode(
             version=qr_version,
+            box_size=resolucion,
             error_correction=qrcode.constants.ERROR_CORRECT_H,
-            border=border,
+            border=border,         
         )
         qr.add_data(content_seguimiento)
         qr.make(fit=True)
