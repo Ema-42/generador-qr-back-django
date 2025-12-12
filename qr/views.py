@@ -147,10 +147,6 @@ class QRCodeView(viewsets.ModelViewSet):
             }
         }, status=status.HTTP_200_OK)
 
-    def get_queryset(self):
-        return QRCode.objects.filter(is_eliminated=False)
-
-    
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         instance.is_eliminated = True
@@ -274,7 +270,7 @@ class QRCodeView(viewsets.ModelViewSet):
        
         embedded_image_base64 = request.data.get("embedded_image", None)
         embedded_image = None
-        # Aplicar reglas según si hay imagen incrustada
+
         if embedded_image_base64:
             if parsed_version is None or parsed_version < 5:
                 qr_version = 5
