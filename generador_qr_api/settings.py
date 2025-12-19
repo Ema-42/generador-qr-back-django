@@ -125,6 +125,7 @@ SPECTACULAR_SETTINGS = {
 #CORS_ALLOWED_ORIGINS = True
 ALLOWED_HOSTS = ['*']
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost",
     "http://localhost:3000",
     "http://localhost:9002",
     "http://127.0.0.1:9002",
