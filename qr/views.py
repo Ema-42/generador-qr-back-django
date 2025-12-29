@@ -42,6 +42,13 @@ from django.shortcuts import get_object_or_404
 from qrcode.image.svg import SvgImage
 from qrcode.image.svg import SvgFragmentImage
 from qrcode.image.svg import SvgPathImage
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth.models import User
+from django.contrib.auth.hashers import make_password, check_password
+from .serializer import RegisterSerializer, LoginSerializer
+from .utils import generate_jwt_token
 
 
 @require_GET
@@ -346,3 +353,108 @@ class QRCodeView(viewsets.ModelViewSet):
             "qr_image_base64": image_base64
 
         }, status=status.HTTP_201_CREATED)
+
+        #AUTENTICACION
+class RegisterView(APIView):
+    """
+    Endpoint para registrar un nuevo usuario
+    POST /api/register/
+    Body: {"username": "...", "email": "...", "password": "..."}
+    """
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response({
+                'status': 'error',
+                'message': 'Datos inválidos',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Crear usuario
+        user = User.objects.create(
+            username=serializer.validated_data['username'],
+            email=serializer.validated_data['email'],
+            password=make_password(serializer.validated_data['password'])
+        )
+        
+        # Generar token JWT
+        token = generate_jwt_token(user)
+        
+        return Response({
+            'status': 'ok',
+            'message': 'Usuario registrado exitosamente',
+            'token': token,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class LoginView(APIView):
+    """
+    Endpoint para login - Si no existe el usuario, lo crea automáticamente
+    POST /api/login/
+    Body: {"username": "...", "email": "...", "password": "..."}
+    """
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response({
+                'status': 'error',
+                'message': 'Datos inválidos',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        username = serializer.validated_data['username']
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+        
+        # Buscar usuario por email
+        try:
+            user = User.objects.get(email=email)
+            
+            # Verificar contraseña
+            if not check_password(password, user.password):
+                return Response({
+                    'status': 'error',
+                    'message': 'Credenciales inválidas'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Login exitoso
+            token = generate_jwt_token(user)
+            
+            return Response({
+                'status': 'ok',
+                'message': 'Login exitoso',
+                'token': token,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            # Usuario no existe, crear nuevo usuario usando email como username
+            user = User.objects.create(
+                username=email,  # ✅ Usa email como username
+                email=email,
+                password=make_password(password)
+            )
+            
+            token = generate_jwt_token(user)
+            
+            return Response({
+                'status': 'ok',
+                'message': 'Usuario creado y login exitoso',
+                'token': token,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email
+                }
+            }, status=status.HTTP_201_CREATED)

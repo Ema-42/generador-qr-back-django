@@ -7,7 +7,7 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY =  os.environ.get("SECRET_KEY")
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
 DEBUG = True
 
@@ -25,17 +25,16 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # DEBE estar primero
     'django.middleware.security.SecurityMiddleware',
-    "whitenoise.middleware.WhiteNoiseMiddleware",
-    "django.middleware.security.SecurityMiddleware",
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # 'django.middleware.security.SecurityMiddleware',  # <- ELIMINAR (duplicado)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
 ]
 
 ROOT_URLCONF = 'generador_qr_api.urls'
@@ -57,7 +56,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'generador_qr_api.wsgi.application'
 
-
 DATABASES = {
     'default': dj_database_url.parse(
         os.environ.get("DATABASE_URL"),
@@ -66,11 +64,7 @@ DATABASES = {
     )
 }
 
-
-
 # Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -86,30 +80,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'America/La_Paz'
-
-
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-
+# Static files
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
@@ -121,9 +103,10 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
 }
 
-# CORS settings
-#CORS_ALLOWED_ORIGINS = True
+# HOSTS Y CORS
 ALLOWED_HOSTS = ['*']
+
+# Orígenes permitidos para CORS
 CORS_ALLOWED_ORIGINS = [
     "http://localhost",
     "http://localhost:3000",
@@ -131,5 +114,40 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:9002",
     "https://generador-qr-front.vercel.app"
 ]
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# IMPORTANTE: Agregar estas configuraciones CORS
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Para Google Sign-In y otros dominios confiables
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://localhost:9002',
+    'http://127.0.0.1:9002',
+    'https://generador-qr-front.vercel.app',
+    'https://accounts.google.com',
+]
+
+# Configuración JWT
+JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM")
+JWT_EXPIRATION_DAYS = int(os.environ.get("JWT_EXPIRATION_DAYS", 5))  # Valor por defecto 5

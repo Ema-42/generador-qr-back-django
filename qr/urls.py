@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework import routers
-from qr.views import QRCodeView
+from qr.views import QRCodeView, RegisterView, LoginView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 router = routers.DefaultRouter()
@@ -10,4 +10,6 @@ urlpatterns = [
     path('qr/', include(router.urls)),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('register/', RegisterView.as_view(), name='register'),
+    path('login/', LoginView.as_view(), name='login'),
 ]
