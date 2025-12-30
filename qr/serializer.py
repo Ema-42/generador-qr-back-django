@@ -4,7 +4,7 @@ from .models import QRCode,QRScan
 class QrSerializer(serializers.ModelSerializer):
     class Meta:
         model = QRCode
-        fields = ['id', 'content', 'nombre_qr', 'created_at', 'views_count','last_viewed_at']
+        fields = ['id', 'content', 'nombre_qr', 'created_at', 'views_count','last_viewed_at','created_by']
         read_only_fields = ['id', 'created_at']
 
     def create(self, validated_data):

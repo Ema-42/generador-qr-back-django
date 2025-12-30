@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status
+from rest_framework.authentication import BasicAuthentication
 from .models import QRCode,QRScan
 from .serializer import QrSerializer, QRScanSerializer
 from rest_framework.response import Response
@@ -49,6 +50,15 @@ from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password, check_password
 from .serializer import RegisterSerializer, LoginSerializer
 from .utils import generate_jwt_token
+import json
+import time
+import hmac
+import hashlib
+
+
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from qr.utils import CsrfExemptSessionAuthentication
 
 
 @require_GET
@@ -71,7 +81,6 @@ def redirect_qr_view(request, qr_id):
     return JsonResponse({'redirect_to': qr.content})
 
 def get_client_ip(request):
-    """Función util para extraer la IP"""
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
         ip = x_forwarded_for.split(',')[0]
@@ -86,14 +95,17 @@ def hex_to_rgb(hex_color):
 frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost')
 
 
+
 class QRCodeView(viewsets.ModelViewSet):
     queryset = QRCode.objects.all()
     serializer_class = QrSerializer
 
+    authentication_classes = (
+        CsrfExemptSessionAuthentication,
+        BasicAuthentication,
+    )
     def list(self, request, *args, **kwargs):
-        # Obtener queryset base (solo no eliminados)
-        queryset = self.get_queryset()
-
+        queryset = self.get_queryset().filter(created_by=request.user)
         # Obtener parámetro de búsqueda
         search_term = request.query_params.get('search', '').strip()
         
@@ -112,7 +124,6 @@ class QRCodeView(viewsets.ModelViewSet):
             queryset = queryset.order_by('created_at')
         else:
             queryset = queryset.order_by('-created_at')
-
         # Leer page y limit con defaults
         try:
             page = int(request.query_params.get('page', '1'))
@@ -123,10 +134,9 @@ class QRCodeView(viewsets.ModelViewSet):
         except ValueError:
             limit = 10
 
-        # Normalizar valores mínimos
         page = max(page, 1)
         limit = max(limit, 1)
-        limit = min(limit, 100)  # Máximo 100 registros por página
+        limit = min(limit, 100) 
 
         # Contar total de registros (después de aplicar filtros)
         total_records = queryset.count()
@@ -143,7 +153,7 @@ class QRCodeView(viewsets.ModelViewSet):
 
         # Serializar datos
         serializer = self.get_serializer(items, many=True)
-
+        print('🔍 SERIALIZER.DATA:', serializer.data)
         return Response({
             "data": serializer.data,
             "pagination": {
@@ -183,9 +193,15 @@ class QRCodeView(viewsets.ModelViewSet):
             return Response({"qr_image_base64": qr.qr_base64}, status=status.HTTP_200_OK)
         else:
             return Response({"detail": "Este QR no tiene una imagen almacenada."}, status=status.HTTP_404_NOT_FOUND)
+    
+   
     @action(detail=False, methods=['post'], url_path='generar', permission_classes=[AllowAny])
     def generar_qr(self, request):
-        serializer = self.get_serializer(data=request.data)
+      
+        print('🔍 REQUEST.USER:', request.user)
+        print('🔍 REQUEST.USER.ID:', getattr(request.user, 'id', None))
+        print('🔍 REQUEST.DATA:', request.data)
+        serializer = self.get_serializer(data=request.data) 
         serializer.is_valid(raise_exception=True)
         content_seguimiento = None
         content = request.data.get("content")
@@ -196,7 +212,7 @@ class QRCodeView(viewsets.ModelViewSet):
         gradient_color_hex = request.data.get("gradient_color", "#000000")
 
         if request.data.get("register_as_official", False):
-            qr_instance = serializer.save()
+            qr_instance = serializer.save(created_by_id=int(request.user.id) if request.user and request.user.is_authenticated else None)
             content_seguimiento = f"{frontend_url}/{qr_instance.id}"
         else:
             content_seguimiento = content
@@ -362,6 +378,7 @@ class RegisterView(APIView):
     Body: {"username": "...", "email": "...", "password": "..."}
     """
     def post(self, request):
+        
         serializer = RegisterSerializer(data=request.data)
         
         if not serializer.is_valid():
@@ -400,6 +417,7 @@ class LoginView(APIView):
     Body: {"username": "...", "email": "...", "password": "..."}
     """
     def post(self, request):
+         
         serializer = LoginSerializer(data=request.data)
         
         if not serializer.is_valid():

@@ -1,6 +1,7 @@
 import jwt
 from datetime import datetime, timedelta
 from django.conf import settings
+from rest_framework.authentication import SessionAuthentication
 
 def generate_jwt_token(user):
     payload = {
@@ -31,3 +32,9 @@ def decode_jwt_token(token):
         return None
     except jwt.InvalidTokenError:
         return None
+
+
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return

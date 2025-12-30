@@ -1,12 +1,12 @@
 from django.utils.deprecation import MiddlewareMixin
 from django.http import JsonResponse
 from django.contrib.auth.models import User
-from .utils.jwt_utils import decode_jwt_token
+from qr.utils import decode_jwt_token
 
 class JWTAuthenticationMiddleware(MiddlewareMixin):
     def process_request(self, request):
         # Rutas públicas que no requieren autenticación
-        public_paths = ['/api/login/', '/api/register/', '/admin/']
+        public_paths = ['/api/login/', '/api/register/']
         
         if any(request.path.startswith(path) for path in public_paths):
             return None
@@ -37,5 +37,5 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
                 'status': 'error',
                 'message': 'Usuario no encontrado'
             }, status=401)
-        
+         
         return None
