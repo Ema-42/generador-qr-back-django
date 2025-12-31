@@ -198,9 +198,10 @@ class QRCodeView(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='generar', permission_classes=[AllowAny])
     def generar_qr(self, request):
       
-        print('🔍 REQUEST.USER:', request.user)
-        print('🔍 REQUEST.USER.ID:', getattr(request.user, 'id', None))
-        print('🔍 REQUEST.DATA:', request.data)
+        #print('🔍 REQUEST.USER:', request.user)
+        #print('🔍 REQUEST.USER.ID:', getattr(request.user, 'id', None))
+        #print('🔍 REQUEST.DATA:', request.data)
+        
         serializer = self.get_serializer(data=request.data) 
         serializer.is_valid(raise_exception=True)
         content_seguimiento = None
