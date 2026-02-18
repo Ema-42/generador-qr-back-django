@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.contrib.auth.models import User
 from qr.utils import decode_jwt_token
 import json
+import re
 
 def _parse_register_flag(request):
     try:
