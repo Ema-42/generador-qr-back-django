@@ -34,35 +34,46 @@ def _parse_register_flag(request):
     except Exception:
         pass
     return None
+ 
+PUBLIC_PATHS = [
+    '/api/login/',
+    '/api/register/',
+]
+
+UUID_PATTERN = re.compile(r'^/[0-9a-f-]{36}/?$')
+
 
 class JWTAuthenticationMiddleware(MiddlewareMixin):
+
     def process_request(self, request):
-        public_paths = ['/api/login/', '/api/register/']
-        
-        if any(request.path.startswith(path) for path in public_paths):
+
+        path = request.path
+
+        # Permitir rutas públicas
+        if any(path.startswith(p) for p in PUBLIC_PATHS) or UUID_PATTERN.match(path):
             return None
-        
+
         register_flag = _parse_register_flag(request)
         if register_flag is False:
             return None
-        
+
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        
+
         if not auth_header.startswith('Bearer '):
             return JsonResponse({
                 'status': 'error',
                 'message': 'Token no proporcionado'
             }, status=401)
-        
+
         token = auth_header.split(' ')[1]
         payload = decode_jwt_token(token)
-        
+
         if not payload:
             return JsonResponse({
                 'status': 'error',
                 'message': 'Token inválido o expirado'
             }, status=401)
-        
+
         try:
             request.user = User.objects.get(id=payload['user_id'])
         except User.DoesNotExist:
@@ -70,5 +81,5 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
                 'status': 'error',
                 'message': 'Usuario no encontrado'
             }, status=401)
-        
+
         return None
